@@ -1,0 +1,92 @@
+<html>
+<head>
+	<title>Hello Kogan.com</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<style>
+	.processClass {
+	    font-color: lightgrey;
+	    font-size: 1.2em;
+	    font-style: italic;
+	    margin: 10px;
+	    display: none;
+	}
+	.totalCalculations {
+		margin-left: 20px;
+	}
+	</style>
+</head>
+<body>
+	<h1>Hello Kogan.com</h1>
+	<button id="calculateButton" type="button">Calculate</button>
+	<p class="processClass"></p>
+	<div class="totalCalculations">
+		<p>Number of products: <span id="numberOfProducts">n/a</span></p>
+		<p>Total cubic weight of products: <span id="totalWeight">n/a</span></p>
+		<p>Average cubic weight of products: <span id="averageWeight">n/a</span></p>
+	</div>
+</body>
+<script>
+$(document).ready(function() {
+    
+    // initialise variables
+    var categoryOfInterest = "Air Conditioners"
+    var koganAPI = "http://wp8m3he1wt.s3-website-ap-southeast-2.amazonaws.com";
+    var nextPage = "/api/products/1";
+    var totalWeight = 0;
+    var numberOfProducts = 0;
+    var tryAgain = 0;
+    $("#calculateButton").on( "click", function() {
+  		
+    	$(".processClass").show();
+    	$(".processClass").html("Processing products in category: " + categoryOfInterest);
+  		processKoganAPI();
+	});
+    function processKoganAPI() {
+    	// JSON request to API
+	    $.getJSON(koganAPI + nextPage, function() {
+	  		console.log( "success" );
+		})
+	    .done(function(data) {
+	    	tryAgain = 0;
+	       	nextPage = data.next;
+	       	// process product objects
+	    	$.each( data.objects, function(i, ivalue) {
+			    
+			    if (ivalue.category == categoryOfInterest) {
+			    	numberOfProducts += 1;
+			    	totalWeight += ( ivalue.size.width/100 * ivalue.size.length/100 * ivalue.size.height/100 ) * 250
+			    }
+			});
+			// continue recursion if value for next page present in json
+	    	if (nextPage != "" && nextPage != undefined && nextPage != null) {
+	    		processKoganAPI();
+	    	} else {
+	    		processCompleted();
+	    	}
+	    })
+		.fail(function() {
+			
+			//try again in case request failed due to network etc.
+			if (tryAgain < 1) {
+				tryAgain += 1;
+				setTimeout(function() {
+					processKoganAPI();
+				}, 2000);
+			} else {
+				processCompleted();
+			}
+		})
+		.always(function() {
+			//reconcile amounts of interest on html page
+		    var averageWeight = totalWeight/numberOfProducts;
+			$("#numberOfProducts").html(numberOfProducts);
+			$("#totalWeight").html(totalWeight.toFixed(3) + " Kg");
+			$("#averageWeight").html(averageWeight.toFixed(3) + " Kg");
+		});
+    }
+    function processCompleted() {
+    	$(".processClass").html("Completed processing!");
+    }
+});
+</script>
+</html>
